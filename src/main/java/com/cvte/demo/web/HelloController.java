@@ -24,4 +24,11 @@ public class HelloController {
         return "Hello Spring Boot!";
     }
 
+    @RequestMapping("/hi")
+    public String hi() {
+        String filePath="F:\\吉他.docx";
+        mailService.sendAttachmentMail(from,"带附件的邮件","有附件，请查收",filePath);
+        return "Hello Spring Boot Boot!";
+    }
+
 }
