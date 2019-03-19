@@ -4,10 +4,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 public class Mail {
 
-    private Recevier[] receviers = null;//接收对象数组
-    private String subject = "对方没写相关内容";//主题
-    private String content= "无内容";//内容
-    private int id = 1;//发送人id，默认为1
+    private Recevier[] receviers;//接收对象数组
+    private String subject;//主题
+    private String content;//内容
+    private int id = 1;//发送人id，默认为1,即默认配置发送方式
 
     public MultipartFile getFile() {
         return file;

@@ -1,7 +1,7 @@
 package com.cvte.demo.pojo;
 
 public class Recevier {
-    private String email = "1294178282@qq.com";
+    private String email;
     private String emailType;
 
     public String getEmail() {

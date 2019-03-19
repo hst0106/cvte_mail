@@ -1,5 +1,7 @@
 package com.cvte.demo.service.impl;
 
+import com.cvte.demo.common.Const;
+import com.cvte.demo.common.ServerResponse;
 import com.cvte.demo.dao.UserEmailDAO;
 import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.pojo.Recevier;
@@ -8,19 +10,16 @@ import com.cvte.demo.service.MailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeUtility;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Optional;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
@@ -28,64 +27,69 @@ public class MailServiceImpl implements MailService{
     @Autowired
     private JavaMailSender javaMailSender;
 
-
-    @Value("${mail.fromMail.addr}")
-    private String from;
-
-
     @Autowired
     private UserEmailDAO userEmailDAO;
 
+    @Value("${path.route}")
+    private String route;
+    //配置发送方接口
     @Override
-    public void sendMail(String to, String subject, String content) {
-        SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
-        simpleMailMessage.setFrom(from);//发起者
-        simpleMailMessage.setTo(to);//接受者
-        simpleMailMessage.setTo("1294178282@qq.com");
-        //如果发给多个人的：
-        //mailMessage.setTo("1xx.com","2xx.com","3xx.com");    
-        simpleMailMessage.setSubject(subject);
-        simpleMailMessage.setText(content);
-        try {
-            javaMailSender.send(simpleMailMessage);
-            System.out.println("发送简单邮件");
-        }catch (Exception e){
-            System.out.println("发送简单邮件失败");
-        }
+    public ServerResponse<Integer> insertUserEmail(UserEmail userEmail) {
+       UserEmail userEmail1 =  userEmailDAO.save(userEmail);
+       if(userEmail == null){
+           return ServerResponse.createByErrorMessage("发送方邮件配置失败");
+       }
+       return ServerResponse.createBySuccess("发送方邮件配置成功",userEmail.getId());
     }
 
+    //发送邮件接口
     @Override
-    public void sendAttachment(Mail mail) {
+    public ServerResponse<String> sendAttachment(Mail mail) {
         Recevier[] receviers = mail.getReceviers();
+        ServerResponse response = null;
         for(Recevier recevier: receviers){
-            sendTest(recevier.getEmail(),mail.getContent(),mail.getSubject(),
+            response = sendMail(recevier,mail.getContent(),mail.getSubject(),
                     mail.getId(),mail.getFile());
         }
+        return response;
     }
 
-    public void  sendTest(String email, String content, String subject,
+    public ServerResponse<String> sendMail(Recevier recevier, String content, String subject,
                           int id,MultipartFile file){
         MimeMessage message=javaMailSender.createMimeMessage();
         UserEmail userEmail = userEmailDAO.getOne(id);
         try {
             MimeMessageHelper helper=new MimeMessageHelper(message,true);
             helper.setFrom(userEmail.getEmail());
-            helper.setTo(email);
+            if(recevier.getEmailType().equals(Const.BCC)){
+                helper.setBcc(recevier.getEmail());
+            }else if(recevier.getEmailType().equals(Const.CC)){
+                helper.setCc(recevier.getEmail());
+            }else{
+                helper.setTo(recevier.getEmail());
+            }
             helper.setSubject(subject);
             helper.setText(content);
-            String filePath = dealWithAttachment(file);
-            FileSystemResource newFile=new FileSystemResource(new File(filePath));
-            String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
-            //添加多个附件可以使用多条
-            //helper.addAttachment(fileName,newFile);
-            helper.addAttachment(fileName,newFile);
+            String filePath = null;
+            if(file != null){
+                filePath = dealWithAttachment(file);
+                FileSystemResource newFile=new FileSystemResource(new File(filePath));
+                String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
+                //添加多个附件可以使用多条
+                //helper.addAttachment(fileName,newFile);
+                helper.addAttachment(fileName,newFile);
+            }
             javaMailSender.send(message);
-            File closeFile = new File(filePath);
-            closeFile.delete();
+            if(filePath != null){
+                File closeFile = new File(filePath);
+                closeFile.delete();
+            }
             System.out.println("带附件的邮件发送成功");
+            return ServerResponse.createBySuccessMessage("发送邮件成功");
         }catch (Exception e){
             e.printStackTrace();
             System.out.println("发送带附件的邮件失败");
+            return ServerResponse.createByErrorMessage("发送邮件失败");
         }
     }
 
@@ -99,8 +103,7 @@ public class MailServiceImpl implements MailService{
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        String filePath = "G:\\idea\\project\\demo\\upload\\"+fileName;
+        String filePath = route + fileName;
         File f = new File(filePath);
         if(!f.exists()){
             try {
@@ -114,39 +117,5 @@ public class MailServiceImpl implements MailService{
             }
         }
         return filePath;
-    }
-
-    @Override
-    public void sendAttachmentMail(int id,String subject, String content, String filePath,String... to) {
-        for(String string : to){
-            send(id,string,subject,content,filePath);
-        }
-    }
-
-    @Override
-    public void insertUserEmail(UserEmail userEmail) {
-        userEmailDAO.save(userEmail);
-    }
-
-    public void send(int id,String to, String subject, String content, String filePath){
-        MimeMessage message=javaMailSender.createMimeMessage();
-        UserEmail userEmail = userEmailDAO.getOne(id);
-        try {
-            MimeMessageHelper helper=new MimeMessageHelper(message,true);
-            helper.setFrom(userEmail.getEmail());
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(content);
-            FileSystemResource file=new FileSystemResource(new File(filePath));
-            String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
-            //添加多个附件可以使用多条
-            //helper.addAttachment(fileName,file);
-            helper.addAttachment(fileName,file);
-            javaMailSender.send(message);
-            System.out.println("带附件的邮件发送成功");
-        }catch (Exception e){
-            e.printStackTrace();
-            System.out.println("发送带附件的邮件失败");
-        }
     }
 }
