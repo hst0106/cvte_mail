@@ -1,5 +1,7 @@
 package com.cvte.demo.service.impl;
 
+import com.cvte.demo.dao.UserEmailDAO;
+import com.cvte.demo.pojo.UserEmail;
 import com.cvte.demo.service.MailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import javax.mail.internet.MimeMessage;
 import java.io.File;
+import java.util.Optional;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
@@ -18,8 +21,13 @@ public class MailServiceImpl implements MailService{
     @Autowired
     private JavaMailSender javaMailSender;
 
+
     @Value("${mail.fromMail.addr}")
     private String from;
+
+
+    @Autowired
+    private UserEmailDAO userEmailDAO;
 
     @Override
     public void sendMail(String to, String subject, String content) {
@@ -40,11 +48,24 @@ public class MailServiceImpl implements MailService{
     }
 
     @Override
-    public void sendAttachmentMail(String to, String subject, String content, String filePath) {
+    public void sendAttachmentMail(int id,String subject, String content, String filePath,String... to) {
+        for(String string : to){
+            send(id,string,subject,content,filePath);
+        }
+
+    }
+
+    @Override
+    public void insertUserEmail(UserEmail userEmail) {
+        userEmailDAO.save(userEmail);
+    }
+
+    public void send(int id,String to, String subject, String content, String filePath){
         MimeMessage message=javaMailSender.createMimeMessage();
+        UserEmail userEmail = userEmailDAO.getOne(id);
         try {
             MimeMessageHelper helper=new MimeMessageHelper(message,true);
-            helper.setFrom(from);
+            helper.setFrom(userEmail.getEmail());
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(content);
@@ -59,6 +80,5 @@ public class MailServiceImpl implements MailService{
             e.printStackTrace();
             System.out.println("发送带附件的邮件失败");
         }
-
     }
 }

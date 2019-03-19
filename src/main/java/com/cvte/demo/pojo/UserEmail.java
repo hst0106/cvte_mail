@@ -3,7 +3,7 @@ package com.cvte.demo.pojo;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "usermail")
+@Table(name = "useremail")
 public class UserEmail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
