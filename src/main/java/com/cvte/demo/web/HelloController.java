@@ -28,7 +28,7 @@ public class HelloController {
 
     //带附件的邮件发送接口
     @PostMapping("/sendMail")
-    public String sendMail(@RequestParam(value = "sendId",defaultValue = "1") int sendId,
+    public String sendMail(@RequestParam(value = "sendId",defaultValue = "1") Integer sendId,
                            @RequestParam(value = "subject",defaultValue = "带附件的邮件") String subject,
                            @RequestParam(value = "content",defaultValue = "有附件，请查收") String content,
                            @RequestParam(value = "file") MultipartFile file,
@@ -47,9 +47,8 @@ public class HelloController {
     }
 
     //简单邮件（文本）的发送接口-----测试接口
-    @RequestMapping("/hello")
-    public String hello(MultipartFile file) {
-        //mailService.sendMail(from,"简单邮件","springboot实现邮件发送");
+    public String hello() {
+        mailService.sendMail(from,"简单邮件","springboot实现邮件发送");
         for (int i = 0; i < 5; i++) {
             logger.trace("跟踪信息");
             logger.debug("调试信息");
