@@ -11,18 +11,11 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
     public static final String QUEUE = "QUEUE";
 
-    public static final String QUEUE2 = "QUEUE2";
-
     public static final String FANOUT_EXCHANGE_NAME = "fanout.exchange.name";
 
     @Bean
     public Queue queue() {
         return new Queue(QUEUE, true);
-    }
-
-    @Bean
-    public Queue queueTwo() {
-        return new Queue(QUEUE2, true);
     }
 
     @Bean
@@ -33,10 +26,5 @@ public class RabbitMQConfig {
     @Bean
     public Binding bingQueue1ToExchange() {
         return BindingBuilder.bind(queue()).to(fanoutExchange());
-    }
-
-    @Bean
-    public Binding bingQueue2ToExchange() {
-        return BindingBuilder.bind(queueTwo()).to(fanoutExchange());
     }
 }

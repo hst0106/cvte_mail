@@ -1,6 +1,7 @@
 package com.cvte.demo.web;
 
 import com.cvte.demo.common.Sender;
+import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.service.MailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,20 +20,14 @@ public class HelloController {
     @Value("${mail.fromMail.addr}")
     private String from;
 
-    //设置发送方的接口
-
-    //private MsgProducer msgProducer = new MsgProducer();
     @Autowired
     private Sender sender;
 
-    @GetMapping("/sendDirectQueue")
-    public Object sendDirectQueue() {
+    @PostMapping("/sendDirectQueue")
+    @ResponseBody
+    public String  sendDirectQueue(Mail mail) {
        // msgProducer.sendMsg("成功了");
-        sender.sendDirectQueue();
+        sender.sendDirectQueue(mail);
         return "ok";
     }
-
-
-
-
 }

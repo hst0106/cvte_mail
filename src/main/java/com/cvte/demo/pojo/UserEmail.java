@@ -1,9 +1,12 @@
 package com.cvte.demo.pojo;
 
+import org.hibernate.annotations.Proxy;
+
 import javax.persistence.*;
 
 @Entity
 @Table(name = "useremail")
+//@Proxy(lazy = false)
 public class UserEmail {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

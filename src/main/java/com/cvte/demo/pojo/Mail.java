@@ -1,13 +1,17 @@
 package com.cvte.demo.pojo;
 
+import org.hibernate.annotations.Proxy;
 import org.springframework.web.multipart.MultipartFile;
 
-public class Mail {
+import java.io.Serializable;
 
-    private Recevier[] receviers;//接收对象数组
-    private String subject;//主题
-    private String content;//内容
-    private int id = 1;//发送人id，默认为1,即默认配置发送方式
+//@Proxy(lazy = false)
+public class Mail implements Serializable{
+
+    private Recevier[] receviers;
+    private String subject;
+    private String content;
+    private int id = 1;
 
     public MultipartFile getFile() {
         return file;

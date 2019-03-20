@@ -20,6 +20,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Optional;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
@@ -54,13 +55,18 @@ public class MailServiceImpl implements MailService{
         return response;
     }
 
+    @Override
+    public UserEmail getUserEmail(int id) {
+        return userEmailDAO.getOne(id);
+    }
+
     public ServerResponse<String> sendMail(Recevier recevier, String content, String subject,
-                          int id,MultipartFile file){
-        MimeMessage message=javaMailSender.createMimeMessage();
-        UserEmail userEmail = userEmailDAO.getOne(id);
+                                           int id, MultipartFile file){
+        MimeMessage message = javaMailSender.createMimeMessage();
+       // UserEmail userEmail = userEmailDAO.getOne(id);
         try {
             MimeMessageHelper helper=new MimeMessageHelper(message,true);
-            helper.setFrom(userEmail.getEmail());
+            helper.setFrom(userEmailDAO.getOne(id).getEmail());
             if(Const.BCC.equals(recevier.getEmailType())){
                 helper.setBcc(recevier.getEmail());
             }else if(Const.CC.equals(recevier.getEmailType())){

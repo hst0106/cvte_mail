@@ -8,4 +8,6 @@ public interface MailService {
     ServerResponse<Integer> insertUserEmail(UserEmail userEmail);
 
     ServerResponse<String> sendAttachment(Mail mail);
+
+    UserEmail getUserEmail(int id);
 }
