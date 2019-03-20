@@ -11,11 +11,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
+import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.io.IOException;
+import java.util.Map;
 
 @Controller
 public class SendMailController {
@@ -45,9 +50,18 @@ public class SendMailController {
 
     //监听队列接口
     @RabbitListener(queues = RabbitMQConfig.QUEUE)
-    public void receiverDirectQueue(Mail mail) {
+    public void receiverDirectQueue(Mail mail,
+                                    @Headers Map<String,Object> headers,
+                                    Channel channel) {
         logger.info("【receiver1监听到QUEUE消息】" + mail.toString());
-        send(mail);
+        Long deliveryType = (Long) headers.get(AmqpHeaders.DELIVERY_TAG);
+        if(send(mail).isSuccess()){
+            try {
+                channel.basicAck(deliveryType,false);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public ServerResponse<String> send(Mail mail){

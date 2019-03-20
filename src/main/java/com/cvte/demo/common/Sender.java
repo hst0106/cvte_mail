@@ -16,37 +16,28 @@ import java.util.UUID;
 
 @Component
 @Slf4j
-public class Sender implements RabbitTemplate.ConfirmCallback,RabbitTemplate.ReturnCallback{
-
-    @Autowired
-    private AmqpTemplate amqpTemplate;
+public class Sender{
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    final RabbitTemplate.ConfirmCallback confirmCallback = new RabbitTemplate.ConfirmCallback(){
+        @Override
+        public void confirm(@Nullable CorrelationData correlationData, boolean ack, @Nullable String cause) {
+            if(ack){
+                logger.info("发送成功");
+            }else{
+                logger.info("发送失败");
+            }
+        }
+    };
+
     public void sendDirectQueue(Mail mail) {
         logger.info("【已向队列发送消息】");
+        rabbitTemplate.setConfirmCallback(confirmCallback);
         CorrelationData correlationId = new CorrelationData(UUID.randomUUID().toString());
         rabbitTemplate.convertAndSend(RabbitMQConfig.FANOUT_EXCHANGE_NAME,"",mail,correlationId);
-    }
-
-
-    //消息发送确认，分两步，是否到达交换器，是否到达队列
-    @Override
-    public void confirm(@Nullable CorrelationData correlationData, boolean ack, @Nullable String cause) {
-        logger.info(" 回调id:" + correlationData);
-        if (ack) {
-            logger.info("消息发送成功");
-        } else {
-            logger.info("消息发送失败:" + cause);
-        }
-    }
-
-    //没有到达队列时触发
-    @Override
-    public void returnedMessage(Message message, int i, String s, String s1, String s2) {
-        System.out.println(message+"  "+i+"  " + s + s1 + s2);
     }
 }
