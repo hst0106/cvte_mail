@@ -26,6 +26,7 @@ public class SendMailController {
         }
     }
 
+
     @ResponseBody
     @PostMapping("/configMail")
     public ServerResponse<Integer> setFrom(@RequestParam(value = "email") String email){

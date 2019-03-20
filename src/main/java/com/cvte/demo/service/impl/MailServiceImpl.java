@@ -61,9 +61,9 @@ public class MailServiceImpl implements MailService{
         try {
             MimeMessageHelper helper=new MimeMessageHelper(message,true);
             helper.setFrom(userEmail.getEmail());
-            if(recevier.getEmailType().equals(Const.BCC)){
+            if(Const.BCC.equals(recevier.getEmailType())){
                 helper.setBcc(recevier.getEmail());
-            }else if(recevier.getEmailType().equals(Const.CC)){
+            }else if(Const.CC.equals(recevier.getEmailType())){
                 helper.setCc(recevier.getEmail());
             }else{
                 helper.setTo(recevier.getEmail());
