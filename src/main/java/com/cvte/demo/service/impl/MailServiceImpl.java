@@ -8,10 +8,15 @@ import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.pojo.MailConfig;
 import com.cvte.demo.pojo.Recevier;
 import com.cvte.demo.service.MailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,6 +27,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.concurrent.Future;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
@@ -31,6 +37,22 @@ public class MailServiceImpl implements MailService{
 
     @Autowired
     private MailConfigDAO mailConfigDAO;
+
+    @Value("${path.route}")
+    private String path;
+
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    @Override
+    @Async("asyncServiceExecutor")
+    public Future<Integer> executeAsync(Mail mail) {
+        logger.info("开始异步执行任务");
+        if(mail.getContent()==null || mail.getReceviers() == null || mail.getSubject() == null){
+            return new AsyncResult<Integer>(Const.FAILUED);
+        }else{
+            return new AsyncResult<Integer>(sendMail(mail).getStatus());
+        }
+    }
 
     /**
     * 把发送方的配置信息持久化到数据库，并返回唯一ID
@@ -52,7 +74,7 @@ public class MailServiceImpl implements MailService{
     * 开始发送邮件
     * */
     @Override
-    public ServerResponse<String> sendAttachment(Mail mail) {
+    public ServerResponse<String> sendMail(Mail mail) {
         byte[] bytes = null;
         if(mail.getFile() != null){
             try {

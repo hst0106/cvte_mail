@@ -1,11 +1,11 @@
-package com.cvte.demo.web;
+package com.cvte.demo.controller;
 
 import com.cvte.demo.common.Const;
 import com.cvte.demo.common.RabbitMQConfig;
+import com.cvte.demo.common.Sender;
 import com.cvte.demo.common.ServerResponse;
 import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.pojo.MailConfig;
-import com.cvte.demo.service.AsyncService;
 import com.cvte.demo.service.MailService;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
@@ -31,17 +31,9 @@ public class SendMailController {
     private MailService mailService;
 
     @Autowired
-    private AsyncService asyncService;
+    private Sender sender;
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
-
-    /**
-    **同步方式发送邮件api
-    * */
-    @PostMapping("/api/mail/actions/send")
-    public ServerResponse<String> sendEmail(Mail mail){
-            return send(mail);
-    }
 
     /**
     * RabbitMQ异步发送邮件api
@@ -54,9 +46,6 @@ public class SendMailController {
         Long deliveryType = (Long) headers.get(AmqpHeaders.DELIVERY_TAG);
         if(send(mail).isSuccess()){
             channel.basicAck(deliveryType,false);
-        }else if(message.getMessageProperties().getRedelivered()){
-            //重复处理失败，拒绝再次接收
-            channel.basicReject(deliveryType,true);
         }else{
             //消息将再次返回队列处理
             channel.basicNack(message.getMessageProperties().getDeliveryTag(),false,true);
@@ -64,25 +53,30 @@ public class SendMailController {
     }
 
     /**
-    *线程池异步发送邮件api
+    *发送邮件api
     * */
-    @PostMapping("/api/mail/actions/threadPool/send")
+    @PostMapping("/api/mails")
     @ResponseBody
-    public ServerResponse<String> sendMessage(Mail mail) throws IOException, ExecutionException, InterruptedException {
-        Future<Integer> future = null;
-        future = asyncService.executeAsync(mail);
-        logger.info("状态显示为（0为成功，1为失败）：" + future.get());
-        if(future.get().equals(Const.SUCCESS)){
-            return ServerResponse.createBySuccessMessage("提交请求成功");
-        }else{
-            return ServerResponse.createByErrorMessage("提交请求失败");
+    public ServerResponse<String> sendMessage(Mail mail,Boolean async) throws IOException, ExecutionException, InterruptedException {
+        //为true则异步发送
+        if(async){
+            Future<Integer> future = null;
+            future = mailService.executeAsync(mail);
+            logger.info("状态显示为（0为成功，1为失败）：" + future.get());
+            if(future.get().equals(Const.SUCCESS)){
+                return ServerResponse.createBySuccessMessage("提交请求成功");
+            }else{
+                return ServerResponse.createByErrorMessage("提交请求失败");
+            }
+        }else{//同步发送
+            return send(mail);
         }
     }
 
     /**
      * 配置发送方api
      * */
-    @PostMapping("/api/mail/config")
+    @PostMapping("/api/mails/config")
     public ServerResponse<Integer> configSender(MailConfig mailConfig){
         return mailService.saveMailConfig(mailConfig);
     }
@@ -91,7 +85,14 @@ public class SendMailController {
         if(mail.getContent()==null || mail.getReceviers() == null || mail.getSubject() == null){
             return ServerResponse.createByErrorMessage("邮件内容为空或者或者主题为空或者没有输入接收方");
         }else{
-            return mailService.sendAttachment(mail);
+            return mailService.sendMail(mail);
         }
+    }
+
+    @PostMapping("/api/mails/mqSend")
+    @ResponseBody
+    public String  sendDirectQueue(Mail mail) {
+        sender.sendDirectQueue(mail);
+        return "ok";
     }
 }
