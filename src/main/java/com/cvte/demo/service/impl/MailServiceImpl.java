@@ -7,6 +7,7 @@ import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.pojo.Recevier;
 import com.cvte.demo.pojo.UserEmail;
 import com.cvte.demo.service.MailService;
+import com.cvte.demo.web.HelloController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -20,7 +21,6 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Optional;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
@@ -46,11 +46,19 @@ public class MailServiceImpl implements MailService{
     //发送邮件接口
     @Override
     public ServerResponse<String> sendAttachment(Mail mail) {
+        byte[] bytes = null;
+        if(mail.getFile() != null){
+            try {
+                bytes =  bytes = mail.getFile().getBytes();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         Recevier[] receviers = mail.getReceviers();
-        ServerResponse response = null;
+        ServerResponse<String> response = null;
         for(Recevier recevier: receviers){
             response = sendMail(recevier,mail.getContent(),mail.getSubject(),
-                    mail.getId(),mail.getFile());
+                    mail.getId(),mail.getFile(),bytes);
         }
         return response;
     }
@@ -61,9 +69,8 @@ public class MailServiceImpl implements MailService{
     }
 
     public ServerResponse<String> sendMail(Recevier recevier, String content, String subject,
-                                           int id, MultipartFile file){
+                                           int id, MultipartFile file,byte[] bytes){
         MimeMessage message = javaMailSender.createMimeMessage();
-       // UserEmail userEmail = userEmailDAO.getOne(id);
         try {
             MimeMessageHelper helper=new MimeMessageHelper(message,true);
             helper.setFrom(userEmailDAO.getOne(id).getEmail());
@@ -78,7 +85,7 @@ public class MailServiceImpl implements MailService{
             helper.setText(content);
             String filePath = null;
             if(file != null){
-                filePath = dealWithAttachment(file);
+                filePath = dealWithAttachment(file,bytes);
                 FileSystemResource newFile=new FileSystemResource(new File(filePath));
                 String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
                 //添加多个附件可以使用多条
@@ -100,15 +107,8 @@ public class MailServiceImpl implements MailService{
     }
 
     //把上传的文件缓存到本项目的upload文件下
-    public String dealWithAttachment(MultipartFile file){
+    public String dealWithAttachment(MultipartFile file,byte[] bytes){
         String fileName = file.getOriginalFilename();//获取文件名
-        //读取文件的内容
-        byte[] bytes = null;
-        try {
-            bytes = file.getBytes();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         String filePath = route + fileName;
         File f = new File(filePath);
         if(!f.exists()){

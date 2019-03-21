@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Headers;
@@ -30,18 +29,17 @@ public class SendMailController {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    //普通发送邮件接口
     @ResponseBody
     @PostMapping("/send_Attachment_Email")
     public ServerResponse<String> sendEmail(Mail mail){
             return send(mail);
     }
 
+    //配置发送方接口
     @ResponseBody
     @PostMapping("/configMail")
-    public ServerResponse<Integer> setFrom(@RequestParam(value = "email") String email){
-        if(email == null){
-            return ServerResponse.createByErrorMessage("发送方邮箱输入为空");
-        }
+    public ServerResponse<Integer> setFrom(@RequestParam(value = "email",required = false) String email){
         UserEmail userEmail = new UserEmail();
         userEmail.setEmail(email);
         return mailService.insertUserEmail(userEmail);
@@ -52,7 +50,7 @@ public class SendMailController {
     @RabbitListener(queues = RabbitMQConfig.QUEUE)
     public void receiverDirectQueue(Mail mail,
                                     @Headers Map<String,Object> headers,
-                                    Channel channel) {
+                                    Channel channel,Message message) throws IOException {
         logger.info("【receiver1监听到QUEUE消息】" + mail.toString());
         Long deliveryType = (Long) headers.get(AmqpHeaders.DELIVERY_TAG);
         if(send(mail).isSuccess()){
@@ -60,6 +58,13 @@ public class SendMailController {
                 channel.basicAck(deliveryType,false);
             } catch (IOException e) {
                 e.printStackTrace();
+                if(message.getMessageProperties().getRedelivered()){
+                    //重复处理失败，拒绝再次接收
+                    channel.basicReject(deliveryType,true);
+                }else{
+                    //消息将再次返回队列处理
+                    channel.basicNack(message.getMessageProperties().getDeliveryTag(),false,true);
+                }
             }
         }
     }
@@ -71,6 +76,4 @@ public class SendMailController {
             return mailService.sendAttachment(mail);
         }
     }
-
-
 }
