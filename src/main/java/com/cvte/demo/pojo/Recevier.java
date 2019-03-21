@@ -1,10 +1,7 @@
 package com.cvte.demo.pojo;
 
-import org.hibernate.annotations.Proxy;
-
 import java.io.Serializable;
 
-//@Proxy(lazy = false)
 public class Recevier implements Serializable{
     private String email;
     private String emailType;

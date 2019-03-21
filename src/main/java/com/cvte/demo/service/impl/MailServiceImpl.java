@@ -1,49 +1,56 @@
 package com.cvte.demo.service.impl;
 
 import com.cvte.demo.common.Const;
+import com.cvte.demo.common.ResponseCode;
 import com.cvte.demo.common.ServerResponse;
-import com.cvte.demo.dao.UserEmailDAO;
+import com.cvte.demo.dao.MailConfigDAO;
 import com.cvte.demo.pojo.Mail;
+import com.cvte.demo.pojo.MailConfig;
 import com.cvte.demo.pojo.Recevier;
-import com.cvte.demo.pojo.UserEmail;
 import com.cvte.demo.service.MailService;
-import com.cvte.demo.web.HelloController;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 @Service("mailService")
 public class MailServiceImpl implements MailService{
 
     @Autowired
-    private JavaMailSender javaMailSender;
+    private JavaMailSenderImpl javaMailSenderImpl;
 
     @Autowired
-    private UserEmailDAO userEmailDAO;
+    private MailConfigDAO mailConfigDAO;
 
-    @Value("${path.route}")
-    private String route;
-    //配置发送方接口
+    /**
+    * 把发送方的配置信息持久化到数据库，并返回唯一ID
+    * */
     @Override
-    public ServerResponse<Integer> insertUserEmail(UserEmail userEmail) {
-       UserEmail userEmail1 =  userEmailDAO.save(userEmail);
-       if(userEmail == null){
-           return ServerResponse.createByErrorMessage("发送方邮件配置失败");
-       }
-       return ServerResponse.createBySuccess("发送方邮件配置成功",userEmail.getId());
+    public ServerResponse<Integer> saveMailConfig(MailConfig mailConfig) {
+        if(mailConfig.getHost() == null || mailConfig.getPort() == 0
+                || mailConfig.getPassword() == null || mailConfig.getUsername() == null){
+            return ServerResponse.createByErrorCodeMessage(ResponseCode.ILLEGAL_ARGUMENT.getCode(),ResponseCode.ILLEGAL_ARGUMENT.getDesc());
+        }
+        MailConfig mailConfig1 = mailConfigDAO.save(mailConfig);
+        if(mailConfig1 == null){
+            return ServerResponse.createByErrorMessage("发送方邮件配置失败");
+        }
+        return ServerResponse.createBySuccess("发送方邮件配置成功",mailConfig1.getId());
     }
 
-    //发送邮件接口
+    /**
+    * 开始发送邮件
+    * */
     @Override
     public ServerResponse<String> sendAttachment(Mail mail) {
         byte[] bytes = null;
@@ -57,23 +64,26 @@ public class MailServiceImpl implements MailService{
         Recevier[] receviers = mail.getReceviers();
         ServerResponse<String> response = null;
         for(Recevier recevier: receviers){
-            response = sendMail(recevier,mail.getContent(),mail.getSubject(),
-                    mail.getId(),mail.getFile(),bytes);
+            response = sendMailTest(recevier,mail,bytes);
         }
         return response;
     }
 
-    @Override
-    public UserEmail getUserEmail(int id) {
-        return userEmailDAO.getOne(id);
-    }
-
-    public ServerResponse<String> sendMail(Recevier recevier, String content, String subject,
-                                           int id, MultipartFile file,byte[] bytes){
-        MimeMessage message = javaMailSender.createMimeMessage();
+    /**
+    * 逐个发送
+    * */
+    public ServerResponse<String> sendMailTest(Recevier recevier,Mail mail,byte[] bytes){
+        javaMailSenderImpl.setHost(mailConfigDAO.getOne(mail.getId()).getHost());
+        javaMailSenderImpl.setPort(mailConfigDAO.getOne(mail.getId()).getPort());
+        javaMailSenderImpl.setUsername(mailConfigDAO.getOne(mail.getId()).getUsername());
+        javaMailSenderImpl.setPassword(mailConfigDAO.getOne(mail.getId()).getPassword());
+        Properties properties = new Properties();
+        properties.put("mail.smtp.auth",true);
+        javaMailSenderImpl.setJavaMailProperties(properties);
+        MimeMessage mimeMessage = javaMailSenderImpl.createMimeMessage();
         try {
-            MimeMessageHelper helper=new MimeMessageHelper(message,true);
-            helper.setFrom(userEmailDAO.getOne(id).getEmail());
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage,true);
+            helper.setFrom(mailConfigDAO.getOne(mail.getId()).getUsername());
             if(Const.BCC.equals(recevier.getEmailType())){
                 helper.setBcc(recevier.getEmail());
             }else if(Const.CC.equals(recevier.getEmailType())){
@@ -81,33 +91,33 @@ public class MailServiceImpl implements MailService{
             }else{
                 helper.setTo(recevier.getEmail());
             }
-            helper.setSubject(subject);
-            helper.setText(content);
+            helper.setSubject(mail.getSubject());
+            helper.setText(mail.getContent());
             String filePath = null;
-            if(file != null){
-                filePath = dealWithAttachment(file,bytes);
+            if(mail.getFile() != null){
+                filePath = dealWithAttachment(mail.getFile(),bytes);
                 FileSystemResource newFile=new FileSystemResource(new File(filePath));
-                //String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
-                //添加多个附件可以使用多条
-                String fileName = file.getOriginalFilename();
-                //helper.addAttachment(fileName,newFile);
+                String fileName = mail.getFile().getOriginalFilename();
                 helper.addAttachment(fileName,newFile);
             }
-            javaMailSender.send(message);
+            javaMailSenderImpl.send(mimeMessage);
             if(filePath != null){
                 File closeFile = new File(filePath);
                 closeFile.delete();
             }
             System.out.println("带附件的邮件发送成功");
             return ServerResponse.createBySuccessMessage("发送邮件成功");
-        }catch (Exception e){
+        } catch (MessagingException e) {
             e.printStackTrace();
             System.out.println("发送带附件的邮件失败");
             return ServerResponse.createByErrorMessage("发送邮件失败");
         }
     }
 
-    //把上传的文件缓存到本项目的upload文件下
+    /**
+     *
+     * 把上传的文件缓存到项目中，并返回文件的路径，发送完再delete
+    * */
     public String dealWithAttachment(MultipartFile file,byte[] bytes){
         String fileName = file.getOriginalFilename();
         String filePath = new File("").getAbsolutePath()+"\\"+fileName;
