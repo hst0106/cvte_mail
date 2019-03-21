@@ -54,18 +54,13 @@ public class SendMailController {
         logger.info("【receiver1监听到QUEUE消息】" + mail.toString());
         Long deliveryType = (Long) headers.get(AmqpHeaders.DELIVERY_TAG);
         if(send(mail).isSuccess()){
-            try {
-                channel.basicAck(deliveryType,false);
-            } catch (IOException e) {
-                e.printStackTrace();
-                if(message.getMessageProperties().getRedelivered()){
-                    //重复处理失败，拒绝再次接收
-                    channel.basicReject(deliveryType,true);
-                }else{
-                    //消息将再次返回队列处理
-                    channel.basicNack(message.getMessageProperties().getDeliveryTag(),false,true);
-                }
-            }
+            channel.basicAck(deliveryType,false);
+        }else if(message.getMessageProperties().getRedelivered()){
+            //重复处理失败，拒绝再次接收
+            channel.basicReject(deliveryType,true);
+        }else{
+            //消息将再次返回队列处理
+            channel.basicNack(message.getMessageProperties().getDeliveryTag(),false,true);
         }
     }
 

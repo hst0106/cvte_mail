@@ -109,13 +109,6 @@
 
 
     </dependencies>
-    <filter>
-        <!-- 配置seeion作用时间不足而导页面需要查询数据session已经关闭问题，扩大作用时间
-            记住要配置在struts前端过滤器之前，否则无效，因为filter的执行顺序只和配置顺序有关
-         -->
-        <filter-name>OpenSessionInViewFilter</filter-name>
-        <filter-class>org.springframework.orm.hibernate5.support.OpenSessionInViewFilter</filter-class>
-    </filter>
     <filter-mapping>
         <filter-name>OpenSessionInViewFilter</filter-name>
         <url-pattern>/*</url-pattern>

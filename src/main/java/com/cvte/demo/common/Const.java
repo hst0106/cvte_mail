@@ -1,9 +1,13 @@
 package com.cvte.demo.common;
 
 public class Const {
-    public static final String TO = "TO";//致
+    public static final String TO = "TO";
 
-    public static final String CC = "CC";//抄送
+    public static final String CC = "CC";
 
-    public static final String BCC = "BCC";//密件抄送
+    public static final String BCC = "BCC";
+
+    public static final int FAILUED = 1;
+
+    public static final int SUCCESS = 0;
 }

@@ -34,6 +34,13 @@ public class Sender{
         }
     };
 
+    final RabbitTemplate.ReturnCallback returnCallback = new RabbitTemplate.ReturnCallback() {
+        @Override
+        public void returnedMessage(Message message, int i, String s, String s1, String s2) {
+                logger.info("消息没有从交换器到达队列");
+        }
+    };
+
     public void sendDirectQueue(Mail mail) {
         logger.info("【已向队列发送消息】");
         rabbitTemplate.setConfirmCallback(confirmCallback);

@@ -49,7 +49,7 @@ public class MailServiceImpl implements MailService{
         byte[] bytes = null;
         if(mail.getFile() != null){
             try {
-                bytes =  bytes = mail.getFile().getBytes();
+                bytes  = mail.getFile().getBytes();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -87,8 +87,9 @@ public class MailServiceImpl implements MailService{
             if(file != null){
                 filePath = dealWithAttachment(file,bytes);
                 FileSystemResource newFile=new FileSystemResource(new File(filePath));
-                String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
+                //String fileName=filePath.substring(filePath.lastIndexOf(File.separator));
                 //添加多个附件可以使用多条
+                String fileName = file.getOriginalFilename();
                 //helper.addAttachment(fileName,newFile);
                 helper.addAttachment(fileName,newFile);
             }
@@ -108,8 +109,9 @@ public class MailServiceImpl implements MailService{
 
     //把上传的文件缓存到本项目的upload文件下
     public String dealWithAttachment(MultipartFile file,byte[] bytes){
-        String fileName = file.getOriginalFilename();//获取文件名
-        String filePath = route + fileName;
+        String fileName = file.getOriginalFilename();
+        String filePath = new File("").getAbsolutePath()+"\\"+fileName;
+        System.out.println(filePath);
         File f = new File(filePath);
         if(!f.exists()){
             try {

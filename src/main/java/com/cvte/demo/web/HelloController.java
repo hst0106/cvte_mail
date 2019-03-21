@@ -1,5 +1,6 @@
 package com.cvte.demo.web;
 
+import com.cvte.demo.common.Const;
 import com.cvte.demo.common.Sender;
 import com.cvte.demo.common.ServerResponse;
 import com.cvte.demo.pojo.Mail;
@@ -8,10 +9,11 @@ import com.cvte.demo.service.MailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @RestController
 public class HelloController {
@@ -38,8 +40,14 @@ public class HelloController {
     //线程池测试接口
     @PostMapping("/send_witn_threadPool")
     @ResponseBody
-    public ServerResponse<String> sendMessage(Mail mail) throws IOException {
-        asyncService.executeAsync(mail);
-        return ServerResponse.createBySuccessMessage("提交请求成功");
+    public ServerResponse<String> sendMessage(Mail mail) throws IOException, ExecutionException, InterruptedException {
+        Future<Integer> future = null;
+        future = asyncService.executeAsync(mail);
+        logger.info(future.get()+"状态");
+        if(future.get().equals(Const.SUCCESS)){
+            return ServerResponse.createBySuccessMessage("提交请求成功");
+        }else{
+            return ServerResponse.createByErrorMessage("提交请求失败");
+        }
     }
-}
+ }

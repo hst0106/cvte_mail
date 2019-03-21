@@ -1,5 +1,6 @@
 package com.cvte.demo.service.impl;
 
+import com.cvte.demo.common.Const;
 import com.cvte.demo.common.ServerResponse;
 import com.cvte.demo.pojo.Mail;
 import com.cvte.demo.service.AsyncService;
@@ -8,7 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.Future;
 
 /**
  * @Author: huangshuntong
@@ -27,12 +31,12 @@ public class AsyncServiceImpl implements AsyncService{
 
     @Override
     @Async("asyncServiceExecutor")
-    public ServerResponse<String> executeAsync(Mail mail) {
+    public Future<Integer> executeAsync(Mail mail) {
         logger.info("开始异步执行任务");
         if(mail.getContent()==null || mail.getReceviers() == null || mail.getSubject() == null){
-            return ServerResponse.createByErrorMessage("邮件内容为空或者或者主题为空或者没有输入接收方");
+            return new AsyncResult<Integer>(Const.FAILUED);
         }else{
-            return mailService.sendAttachment(mail);
+             return new AsyncResult<Integer>(mailService.sendAttachment(mail).getStatus());
         }
     }
 }
